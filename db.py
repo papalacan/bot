@@ -4,8 +4,8 @@
 from datetime import datetime
 from pony.orm import *
 
-granumDB = Database()
-class Chat(granumDB.Entity):
+lacanDB = Database()
+class Chat(lacanDB.Entity):
     primary_id = PrimaryKey(int, auto=True)
     chat_id = Required(int, unique=True)
     user_id = Required(int)

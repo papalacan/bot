@@ -8,34 +8,39 @@ from pyslack import SlackClient
 import json
 import argparse
 import time
-import timepad
 import os
 import traceback
+import urllib2
 from datetime import datetime
 from pony.orm import db_session, select
-from db import granumDB, Chat
+from db import lacanDB, Chat
 
 
 LAST_UPDATE_ID = None
-MESSAGE_START = "Пока никаких новостей...\nЯ буду присылать анонсы сюда и в канал @GranumSalis."
-MESSAGE_STOP = "Я умолкаю в этом чате! Может быть, за анонсами удобнее следить в канале @GranumSalis?.."
-MESSAGE_HELP = "/hello - Greetings\n/help - show this message\n/next - next event\n/stop - exclude self from notification list\n/timing - timetable"
-KEYBOARD = '{"keyboard" : [["/start", "/stop", "/next"], ["/timing", "/help"]], "resize_keyboard" : true}'
-KEYBOARD_ADMIN = '{"keyboard" : [["/start", "/stop", "/next"], ["/timing", "/help"], ["/user_list", "/secret_list"]], "resize_keyboard" : true}'
-MESSAGE_HELP_ADMIN = "/hello - Greetings\n/help - show this message\n/next - next event\n/user_list - list of subscribers\n/secret_list - get participants list for next event\n/send_broad <message> - send message to all users\n/send <user_id> <message> - send <message> to <user_id>\n/stop - exclude self from notification list"
+MESSAGE_START = "Уааа!"
+MESSAGE_HELP = "/say - Lacan, say!\n/link - link to Google Sheet\n/top -- top movies\n/help - show this message"
+KEYBOARD = '{"keyboard" : [["/say", "/top", "/link", "/help"]], "resize_keyboard" : true}'
+KEYBOARD_ADMIN = KEYBOARD
+#KEYBOARD_ADMIN = '{"keyboard" : [["/start", "/stop", "/next"], ["/timing", "/help"], ["/user_list", "/secret_list"]], "resize_keyboard" : true}'
+#MESSAGE_HELP_ADMIN = "/say - Lacan, say!\n/help - show this message"
+MESSAGE_HELP_ADMIN = MESSAGE_HELP
 MESSAGE_ALARM = "Аларм! Аларм!"
 CHAT_ID_ALARM = 79031498
-BOT_ID = 136777319
+CHAT_ID_SAY = -111633759
+BOT_ID = 166203201
 SEND_BROAD_CMD = '/send_broad'
 SEND_MSG_CMD = '/send'
 START_CMD = '/start'
 STOP_CMD = '/stop'
 SECRET_LIST_CMD = '/secret_list'
+TOP_CMD = '/top'
+LINK_CMD = '/link'
 USER_LIST_CMD = '/user_list'
 HELLO_CMD = '/hello'
 HELP_CMD = '/help'
 NEXT_CMD = '/next'
 TIMING_CMD = '/timing'
+SAY_CMD = '/say'
 TELEGRAM_MSG_CHANNEL = '#telegram-messages'
 
 
@@ -44,11 +49,11 @@ def main():
 
     parser = argparse.ArgumentParser(description="Telegram bot for GranumSalis")
     parser.add_argument("--logfile", type=str, default='log', help="Path to log file")
-    parser.add_argument("--dbfile", type=str, default='granumsalis.sqlite', help="Path to sqlite DB file")
+    parser.add_argument("--dbfile", type=str, default='lacan.sqlite', help="Path to sqlite DB file")
     args = parser.parse_args()
 
-    granumDB.bind('sqlite', args.dbfile, create_db=True)
-    granumDB.generate_mapping(create_tables=True)
+    lacanDB.bind('sqlite', args.dbfile, create_db=True)
+    lacanDB.generate_mapping(create_tables=True)
 
     with open('.admin_ids') as f:
         admin_ids = f.read().splitlines() 
@@ -59,9 +64,10 @@ def main():
     logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
     telegram_token = open('.telegram_token').readline().strip()
-    slack_token = open('.slack_token').readline().strip()
+    #slack_token = open('.slack_token').readline().strip()
     bot = telegram.Bot(telegram_token)
-    slackbot = SlackClient(slack_token)
+    #slackbot = SlackClient(slack_token)
+    slackbot = None
 
     try:
         LAST_UPDATE_ID = bot.getUpdates()[-1].update_id
@@ -73,6 +79,9 @@ def main():
             run(bot, admin_ids, args.logfile, slackbot)
         except telegram.TelegramError as error:
             print "TelegramError", error
+            time.sleep(1)
+        except urllib2.URLError as error:
+            print "URLError", error
             time.sleep(1)
         except:
             traceback.print_exc()
@@ -97,7 +106,7 @@ def log_update(update, logfile, slackbot, primary_id):
         slack_text = slack_text.format(message.text)
     log_text = update.to_json().decode('unicode-escape').encode('utf-8') + '\n'
 
-    slackbot.chat_post_message(TELEGRAM_MSG_CHANNEL, slack_text, as_user=True)
+    #slackbot.chat_post_message(TELEGRAM_MSG_CHANNEL, slack_text, as_user=True)
     with open(logfile, 'a') as log:
         log.write(log_text)
 
@@ -189,6 +198,16 @@ def get_timing_message():
     CMD = "curl -s 'https://docs.google.com/spreadsheets/d/1eBh9w0WRRJleBQd7eVHFKBQgc5V_w0TYymMkKHL6598/export?format=tsv&id=1eBh9w0WRRJleBQd7eVHFKBQgc5V_w0TYymMkKHL6598&gid=1758330787' | sed -e 's/[[:space:]]$//g' | awk 'NF > 1 {print }'"
     return os.popen(CMD).read()
 
+
+def get_google_sheet():
+    LINK = "https://docs.google.com/spreadsheets/d/136pGiG1VyAMW-Oeu17NGxi3sDUvDvlubKO9u28xa0vA"
+    return LINK
+
+
+def get_top_list():
+    CMD = "curl -s 'https://docs.google.com/spreadsheets/d/136pGiG1VyAMW-Oeu17NGxi3sDUvDvlubKO9u28xa0vA/export?format=tsv' | grep -v 'ОК' | grep -v 'OK' | awk -F '\t' '{print $2,$3}' | grep '^[0-9].[0-9]' | sort -r | head -3"
+    return os.popen(CMD).read()
+
 def run(bot, admin_list, logfile, slackbot):
     global LAST_UPDATE_ID
     for update in bot.getUpdates(offset=LAST_UPDATE_ID, timeout=10):
@@ -231,6 +250,15 @@ def run(bot, admin_list, logfile, slackbot):
             os.remove(timepad_list_filename)
         elif is_admin and message.text == USER_LIST_CMD:
             print_userlist(bot,message)
+        elif message.text.startswith(SAY_CMD) and (len(message.text) > len(SAY_CMD) + 1):
+            bot.sendMessage(chat_id=CHAT_ID_SAY, text=message.text[len(SAY_CMD) + 1:])
+            #bot.sendMessage(chat_id=CHAT_ID_SAY, text='Агу!')
+        elif message.text == TOP_CMD:
+            top_message = get_top_list()
+            bot.sendMessage(chat_id=message.chat_id, text=top_message, reply_markup=reply_markup)
+        elif message.text == LINK_CMD:
+            link_message = get_google_sheet()
+            bot.sendMessage(chat_id=message.chat_id, text=link_message, reply_markup=reply_markup)
         else:
             pass
             

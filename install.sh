@@ -7,7 +7,7 @@ PIP_PACKAGES="requests pony parse pdfkit pyslack-real python-telegram-bot"
 sudo apt install python-pip python-virtualenv
 sudo apt-get --reinstall install python-pyasn1 python-pyasn1-modules
 
-virtualenv --no-site-packages --prompt="(granumsalis)" $VENV_DIR
+virtualenv --no-site-packages --prompt="(papalacan)" $VENV_DIR
 
 $PIP install pyasn1
 $PIP install $PIP_PACKAGES
