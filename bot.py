@@ -205,7 +205,7 @@ def get_google_sheet():
 
 
 def get_top_list():
-    CMD = "curl -s 'https://docs.google.com/spreadsheets/d/136pGiG1VyAMW-Oeu17NGxi3sDUvDvlubKO9u28xa0vA/export?format=tsv' | grep -v 'ОК' | grep -v 'OK' | awk -F '\t' '{print $2,$3}' | grep '^[0-9].[0-9]' | sort -r | head -3"
+    CMD = "curl -s 'https://docs.google.com/spreadsheets/d/136pGiG1VyAMW-Oeu17NGxi3sDUvDvlubKO9u28xa0vA/export?format=tsv' | grep -v 'ОК' | grep -v 'OK' | awk -F '\t' '{print $2,$3}' | grep '^[0-9]*.[0-9]' | sort -r -n | head -3"
     return os.popen(CMD).read()
 
 def run(bot, admin_list, logfile, slackbot):
