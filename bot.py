@@ -26,7 +26,7 @@ KEYBOARD_ADMIN = KEYBOARD
 MESSAGE_HELP_ADMIN = MESSAGE_HELP
 MESSAGE_ALARM = "Аларм! Аларм!"
 CHAT_ID_ALARM = 79031498
-CHAT_ID_SAY = -111633759
+CHAT_ID_SAY = -1001046678335
 BOT_ID = 166203201
 SEND_BROAD_CMD = '/send_broad'
 SEND_MSG_CMD = '/send'
@@ -78,6 +78,7 @@ def main():
         try:
             run(bot, admin_ids, args.logfile, slackbot)
         except telegram.TelegramError as error:
+            traceback.print_exc()
             print "TelegramError", error
             time.sleep(1)
         except urllib2.URLError as error:
